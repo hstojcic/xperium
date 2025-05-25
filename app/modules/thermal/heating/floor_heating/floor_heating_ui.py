@@ -336,9 +336,9 @@ class FloorHeatingUI:
         with st.container():
             st.subheader(f"Razdjelnik: {selected_manifold['name']}")
             
-            col1, col2, col3, col4 = st.columns(4)
-            col1.metric("Polazna temperatura", f"{selected_manifold.get('flow_temperature', 35)} °C")
-            col2.metric("Temperaturna razlika (ΔT)", f"{selected_manifold.get('delta_t', 5)} °C")
+            col1, col2, col3, col4 = st.columns(4)            
+            col1.metric("Polazna temperatura", f"{selected_manifold.get('flow_temperature', 35):.1f} °C")
+            col2.metric("Temperaturna razlika (ΔT)", f"{selected_manifold.get('delta_t', 5):.1f} °C")
             
             # Dohvati display format za promjer cijevi
             pipe_display = PIPE_DATA.get(selected_manifold.get('pipe_diameter', "16x2,0"), {}).get('display', selected_manifold.get('pipe_diameter', "16x2,0"))
@@ -658,20 +658,18 @@ class FloorHeatingUI:
                             pipe_volume_per_meter = pipe_data.get("volume_per_meter", 0.113)  # Litara po metru
                             water_volume = pipe_volume_per_meter * pipe_length
                         except Exception:
-                            water_volume = 0.0
-
-                        # Dodaj podatke za tablicu
+                            water_volume = 0.0                        # Dodaj podatke za tablicu
                         table_data.append({
                             "Prostorija": room_name,
-                            "Temp. [°C]": room_temp,
+                            "Temp. [°C]": f"{room_temp:.1f}",
                             "Površina [m²]": f"{area:.2f}",
-                            "Topl. tok [W/m²]": f"{heat_flux:.2f}",
-                            "Snaga [W]": f"{heat_load:.2f}",
+                            "Topl. tok [W/m²]": f"{heat_flux:.1f}",
+                            "Snaga [W]": f"{heat_load:.0f}",
                             "Protok [l/min]": f"{flow_rate_l_min:.2f}",
                             "Pad tlaka [kPa]": f"{pressure_drop:.2f}",
                             "Duljina [m]": f"{pipe_length:.2f}",
                             "Voda [l]": f"{water_volume:.2f}",
-                            "Temp. poda [°C]": f"{floor_temp:.2f}",
+                            "Temp. poda [°C]": f"{floor_temp:.1f}",
                         })
                         
                         # Dodaj vrijednosti u ukupne sume za razdjelnik
@@ -706,12 +704,11 @@ class FloorHeatingUI:
                         st.dataframe(pd.DataFrame(table_data), use_container_width=True)
                     else:
                         st.info("Nema izračunatih petlji za ovaj razdjelnik.")
-                    
-                    # Prikaži ukupne vrijednosti za razdjelnik
+                      # Prikaži ukupne vrijednosti za razdjelnik
                     st.markdown("##### Ukupno za razdjelnik:")
                     col1, col2, col3, col4, col5 = st.columns(5)
                     col1.metric("Površina", f"{total_area_manifold:.2f} m²")
-                    col2.metric("Snaga", f"{total_power_manifold:.2f} W")
+                    col2.metric("Snaga", f"{total_power_manifold:.0f} W")
                     col3.metric("Protok", f"{total_flow_manifold:.2f} l/min")
                     col4.metric("Duljina cijevi", f"{total_pipe_length_manifold:.2f} m")
                     col5.metric("Volumen vode", f"{total_water_volume_manifold:.2f} l")
@@ -722,12 +719,11 @@ class FloorHeatingUI:
                     total_flow_floor += total_flow_manifold
                     total_pipe_length_floor += total_pipe_length_manifold
                     total_water_volume_floor += total_water_volume_manifold
-                
-                # Prikaži ukupne vrijednosti za etažu
+                  # Prikaži ukupne vrijednosti za etažu
                 st.markdown("#### Ukupno za etažu:")
                 col1, col2, col3, col4, col5 = st.columns(5)
                 col1.metric("Površina", f"{total_area_floor:.2f} m²")
-                col2.metric("Snaga", f"{total_power_floor:.2f} W")
+                col2.metric("Snaga", f"{total_power_floor:.0f} W")
                 col3.metric("Protok", f"{total_flow_floor:.2f} l/min")
                 col4.metric("Duljina cijevi", f"{total_pipe_length_floor:.2f} m")
                 col5.metric("Volumen vode", f"{total_water_volume_floor:.2f} l")
@@ -738,12 +734,11 @@ class FloorHeatingUI:
                 total_flow_building += total_flow_floor
                 total_pipe_length_building += total_pipe_length_floor
                 total_water_volume_building += total_water_volume_floor
-        
-        # Prikaži ukupne vrijednosti za cijelu zgradu
+          # Prikaži ukupne vrijednosti za cijelu zgradu
         st.markdown("### Ukupno za zgradu")
         col1, col2, col3, col4, col5 = st.columns(5)
         col1.metric("Površina", f"{total_area_building:.2f} m²")
-        col2.metric("Snaga", f"{total_power_building:.2f} W")
+        col2.metric("Snaga", f"{total_power_building:.0f} W")
         col3.metric("Protok", f"{total_flow_building:.2f} l/min")
         col4.metric("Duljina cijevi", f"{total_pipe_length_building:.2f} m")
         col5.metric("Volumen vode", f"{total_water_volume_building:.2f} l")
