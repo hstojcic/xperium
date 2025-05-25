@@ -1,6 +1,19 @@
 import streamlit as st
 import os
-from docx import Document
+import sys
+
+# Postavka za provjeru jesmo li na Streamlit Cloudu
+is_streamlit_cloud = "STREAMLIT_SHARING" in os.environ or "IS_STREAMLIT_CLOUD" in os.environ
+
+# Global varijabla za Document
+Document = None
+
+# Pokušaj importiranja docx biblioteke
+try:
+    from docx import Document
+except ImportError:
+    # Ako biblioteka nije dostupna, Document ostaje None
+    pass
 
 class WordExport:
     """
@@ -12,11 +25,20 @@ class WordExport:
         
         # Provjera i stvaranje mape za izvoz
         os.makedirs("exports", exist_ok=True)
+        
+        # Provjera dostupnosti Word funkcionalnosti
+        self.word_available = Document is not None
     
     def export_current_calculation(self):
         """
         Izvozi trenutni proračun u Word dokument
         """
+        # Provjera je li docx modul dostupan
+        if not self.word_available:
+            st.error("Funkcionalnost izvoza u Word nije dostupna u ovom okruženju.")
+            st.info("Ova funkcionalnost je dostupna samo u desktop verziji aplikacije.")
+            return
+            
         calculation = self.state_manager.get_current_calculation()
         if not calculation:
             st.error("Nema otvorenog proračuna za izvoz.")
@@ -63,6 +85,10 @@ class WordExport:
             calculation: Proračun za izvoz
             file_path: Putanja za spremanje Word datoteke
         """
+        # Dodatna provjera dostupnosti Word funkcionalnosti
+        if not self.word_available or Document is None:
+            raise ImportError("Modul za Word export nije dostupan")
+            
         # Stvaranje novog dokumenta
         doc = Document()
         

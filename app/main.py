@@ -5,6 +5,9 @@ import sys
 # Dodajemo trenutni direktorij u PYTHONPATH
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Provjera jesmo li na Streamlit Cloudu
+is_streamlit_cloud = "STREAMLIT_SHARING" in os.environ or "IS_STREAMLIT_CLOUD" in os.environ
+
 from core.navigation import Navigation
 from core.state_manager import StateManager
 from core.file_manager import FileManager
