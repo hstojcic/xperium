@@ -7,8 +7,6 @@ import subprocess
 import sys
 import tempfile
 import time
-import tkinter as tk
-from tkinter import filedialog
 import traceback
 
 class FileManager:
@@ -28,46 +26,124 @@ class FileManager:
     
     def _get_save_file_path(self, default_name="proračun.calc"):
         """
-        Otvara Windows dijalog za odabir putanje za spremanje
+        Streamlit implementacija za odabir putanje za spremanje
         """
-        # Inicijaliziramo tkinter root i sakrijemo ga
-        root = tk.Tk()
-        root.withdraw()
-        root.attributes('-topmost', True)  # Osigurava da dijalog bude iznad Streamlit-a
+        # Koristeći session_state za persistentnost dijaloga
+        if 'save_filename' not in st.session_state:
+            st.session_state.save_filename = default_name
+            
+        # Koristimo Streamlit komponente za unos imena datoteke
+        st.sidebar.markdown("### Spremi proračun")
+        filename = st.sidebar.text_input("Naziv datoteke:", st.session_state.save_filename, key="save_file_input")
         
-        # Prikazujemo dijalog za spremanje
-        file_path = filedialog.asksaveasfilename(
-            initialdir=self.default_save_dir,
-            initialfile=default_name,
-            defaultextension=".calc",
-            filetypes=[("Calculation files", "*.calc"), ("All files", "*.*")]
+        # Dodajemo .calc ekstenziju ako korisnik nije
+        if filename and not filename.lower().endswith('.calc'):
+            filename += '.calc'
+        
+        # Predložimo nekoliko uobičajenih lokacija
+        save_locations = {
+            "Mapa proračuna": os.path.join(os.getcwd(), "saved_calculations"),
+            "Moji dokumenti": os.path.join(os.path.expanduser("~"), "Documents"),
+            "Strojarski proračuni": self.default_save_dir
+        }
+        
+        selected_location = st.sidebar.selectbox(
+            "Lokacija:", 
+            list(save_locations.keys()),
+            key="save_location_select"
         )
         
-        # Uništavamo tkinter root
-        root.destroy()
+        # Gumbi za spremanje ili odustajanje
+        col1, col2 = st.sidebar.columns(2)
+        save_clicked = col1.button("Spremi", key="save_file_confirm")
+        cancel_clicked = col2.button("Odustani", key="save_file_cancel")
         
-        return file_path if file_path else None
+        if cancel_clicked:
+            # Čistimo dialog
+            if 'save_filename' in st.session_state:
+                del st.session_state.save_filename
+            return None
+            
+        if save_clicked and filename:
+            # Formiramo putanju
+            full_path = os.path.join(save_locations[selected_location], filename)
+            st.session_state.save_filename = filename  # Pamtimo za sljedeći put
+            
+            # Ako datoteka već postoji, pitamo korisnika za potvrdu
+            if os.path.exists(full_path):
+                overwrite = st.sidebar.warning(f"Datoteka {filename} već postoji!")
+                confirm_overwrite = st.sidebar.button("Prepiši", key="confirm_overwrite")
+                cancel_overwrite = st.sidebar.button("Odustani", key="cancel_overwrite")
+                
+                if confirm_overwrite:
+                    return full_path
+                elif cancel_overwrite:
+                    return None
+                else:
+                    # Čekamo korisnički odgovor
+                    return "waiting"
+            
+            # Vraćamo putanju za spremanje
+            return full_path
+            
+        return "waiting"  # Čekamo da korisnik ispuni podatke
     
     def _get_open_file_path(self):
         """
-        Otvara Windows dijalog za odabir datoteke za otvaranje
+        Streamlit implementacija za odabir datoteke za otvaranje
         """
-        # Inicijaliziramo tkinter root i sakrijemo ga
-        root = tk.Tk()
-        root.withdraw()
-        root.attributes('-topmost', True)  # Osigurava da dijalog bude iznad Streamlit-a
+        st.sidebar.markdown("### Otvori proračun")
         
-        # Prikazujemo dijalog za otvaranje
-        file_path = filedialog.askopenfilename(
-            initialdir=self.default_save_dir,
-            defaultextension=".calc",
-            filetypes=[("Calculation files", "*.calc"), ("All files", "*.*")]
+        # Definiramo lokacije za pretraživanje
+        open_locations = {
+            "Mapa proračuna": os.path.join(os.getcwd(), "saved_calculations"),
+            "Moji dokumenti": os.path.join(os.path.expanduser("~"), "Documents"),
+            "Strojarski proračuni": self.default_save_dir
+        }
+        
+        selected_location = st.sidebar.selectbox(
+            "Lokacija:", 
+            list(open_locations.keys()),
+            key="open_location_select"
         )
         
-        # Uništavamo tkinter root
-        root.destroy()
+        # Dohvaćamo popis datoteka s odabrane lokacije
+        location_path = open_locations[selected_location]
         
-        return file_path if file_path else None
+        try:
+            if os.path.exists(location_path):
+                # Filtriramo samo .calc datoteke
+                files = [f for f in os.listdir(location_path) if f.endswith('.calc')]
+                
+                if not files:
+                    st.sidebar.info(f"Nema dostupnih proračuna u {selected_location}")
+                    
+                # Sortiramo po datumu izmjene (najnovije prvo)
+                files = sorted(files, key=lambda f: os.path.getmtime(os.path.join(location_path, f)), reverse=True)
+                
+                # Prikazujemo popis datoteka
+                selected_file = st.sidebar.selectbox(
+                    "Odaberi proračun:", 
+                    files,
+                    key="open_file_select"
+                )
+                
+                # Gumbi za otvaranje ili odustajanje
+                col1, col2 = st.sidebar.columns(2)
+                open_clicked = col1.button("Otvori", key="open_file_confirm")
+                cancel_clicked = col2.button("Odustani", key="open_file_cancel")
+                
+                if open_clicked and selected_file:
+                    return os.path.join(location_path, selected_file)
+                
+                if cancel_clicked:
+                    return None
+            else:
+                st.sidebar.error(f"Lokacija {selected_location} ne postoji")
+        except Exception as e:
+            st.sidebar.error(f"Greška pri čitanju lokacije: {str(e)}")
+        
+        return "waiting"  # Čekamo da korisnik odabere
     
     def save_calculation(self):
         """
@@ -81,15 +157,29 @@ class FileManager:
         file_path = self.state_manager.get_current_file_path()
         
         if not file_path:
-            # Ako nema putanje, koristimo dijalog za spremanje
+            # Ako nema putanje, koristimo Streamlit dijalog za spremanje
             default_name = current_calculation.name if hasattr(current_calculation, 'name') and current_calculation.name else "proračun"
             if not default_name.endswith('.calc'):
                 default_name += '.calc'
             
+            # Postavimo zastavicu za prikaz dijaloga
+            if "showing_save_dialog" not in st.session_state:
+                st.session_state.showing_save_dialog = True
+                st.rerun()
+                
             file_path = self._get_save_file_path(default_name)
+            
+            if file_path == "waiting":
+                return "waiting"
+                
             if not file_path:  # Korisnik je otkazao dijalog
+                st.session_state.showing_save_dialog = False
                 st.info("Otkazano spremanje.")
+                st.rerun()
                 return False
+                
+            # Resetiramo zastavicu dijaloga jer smo završili s odabirom
+            st.session_state.showing_save_dialog = False
         
         # Spremanje proračuna - koristimo postojeću putanju
         success = self._save_to_file(current_calculation, file_path)
@@ -114,11 +204,25 @@ class FileManager:
         if not default_name.endswith('.calc'):
             default_name += '.calc'
         
-        # Otvaramo dijalog za odabir lokacije spremanja
+        # Postavimo zastavicu za prikaz dijaloga
+        if "showing_save_as_dialog" not in st.session_state:
+            st.session_state.showing_save_as_dialog = True
+            st.rerun()
+            
+        # Otvaramo Streamlit dijalog za odabir lokacije spremanja
         file_path = self._get_save_file_path(default_name)
+        
+        if file_path == "waiting":
+            return "waiting"
+            
         if not file_path:  # Korisnik je otkazao dijalog
+            st.session_state.showing_save_as_dialog = False
             st.info("Otkazano spremanje.")
+            st.rerun()
             return False
+            
+        # Resetiramo zastavicu dijaloga jer smo završili s odabirom
+        st.session_state.showing_save_as_dialog = False
             
         # Spremi proračun pod tim imenom
         success = self._save_to_file(current_calculation, file_path)
@@ -131,13 +235,26 @@ class FileManager:
     
     def open_calculation(self):
         """
-        Otvara postojeći proračun koristeći Windows dijalog
+        Otvara postojeći proračun koristeći Streamlit sučelje
         """
+        # Postavljamo zastavicu za prikaz dijaloga za otvaranje
+        if "showing_open_dialog" not in st.session_state:
+            st.session_state.showing_open_dialog = True
+            st.rerun()
+        
         file_path = self._get_open_file_path()
         
+        if file_path == "waiting":
+            return "waiting"
+            
         if not file_path:  # Korisnik je otkazao dijalog
+            st.session_state.showing_open_dialog = False
             st.info("Otkazano otvaranje.")
+            st.rerun()
             return False
+            
+        # Resetiramo zastavicu dijaloga jer smo završili s odabirom
+        st.session_state.showing_open_dialog = False
         
         try:
             calculation = self._load_from_file(file_path)

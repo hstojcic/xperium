@@ -101,30 +101,35 @@ class Navigation:
             # Ako je akcija bila 'zatvori', zatvori proračun
             self.close_current_calculation()
         
-        st.rerun()
+        st.rerun()    
+    
     def render_save_dialog(self):
         """
-        Prikazuje dijalog za spremanje proračuna
+        Prikazuje dijalog za spremanje proračuna u Streamlit sučelju
         """
-        # Direktno pozivamo metodu za spremanje umjesto prikazivanja dijaloga
+        # Pozivamo metodu za spremanje s novim Streamlit dijalogom
         file_manager = st.session_state.file_manager
-        success = file_manager.save_calculation()
+        result = file_manager.save_calculation()
         
-        # Resetiramo zastavicu dijaloga
-        st.session_state.showing_save_dialog = False
-        st.rerun()
+        # Ako je rezultat "waiting", to znači da korisnik još interagira s dijalogom
+        if result != "waiting":
+            # Resetiramo zastavicu dijaloga jer je postupak završen
+            st.session_state.showing_save_dialog = False
+            st.rerun()
         
     def render_save_as_dialog(self):
         """
-        Prikazuje dijalog za spremanje proračuna pod novim imenom
+        Prikazuje dijalog za spremanje proračuna pod novim imenom u Streamlit sučelju
         """
-        # Direktno pozivamo metodu za spremanje pod novim imenom
+        # Pozivamo metodu za spremanje pod novim imenom s novim Streamlit dijalogom
         file_manager = st.session_state.file_manager
-        success = file_manager.save_calculation_as()
+        result = file_manager.save_calculation_as()
         
-        # Resetiramo zastavicu dijaloga
-        st.session_state.showing_save_as_dialog = False
-        st.rerun()
+        # Ako je rezultat "waiting", to znači da korisnik još interagira s dijalogom
+        if result != "waiting":
+            # Resetiramo zastavicu dijaloga jer je postupak završen
+            st.session_state.showing_save_as_dialog = False
+            st.rerun()
     
     def show_category_selection(self):
         """
