@@ -508,10 +508,9 @@ class FloorHeatingUI:
                 
                 # Dohvati rezultate
                 results = loop.get("results", {})
-                
-                # Originalne vrijednosti s originalnim redoslijedom
-                st.metric("Toplinski tok", f"{results.get('heat_flux', 0):.2f} W/m²")
-                st.metric("Snaga", f"{results.get('heat_load', 0):.2f} W")
+                  # Originalne vrijednosti s originalnim redoslijedom
+                st.metric("Toplinski tok", f"{results.get('heat_flux', 0):.1f} W/m²")
+                st.metric("Snaga", f"{results.get('heat_load', 0):.0f} W")
                 st.metric("Protok", f"{results.get('flow_rate_l_min', 0):.2f} l/min")
                 st.metric("Pad tlaka", f"{results.get('pressure_drop', 0):.2f} kPa")
                 
@@ -519,9 +518,9 @@ class FloorHeatingUI:
                 flow_temp = manifold.get("flow_temperature", 35) if manifold else 35
                 delta_t = manifold.get("delta_t", 5) if manifold else 5
                 return_temp = flow_temp - delta_t
-                st.metric("Povratna temperatura", f"{return_temp:.2f} °C")
+                st.metric("Povratna temperatura", f"{return_temp:.1f} °C")
                 
-                st.metric("Temperatura poda", f"{results.get('floor_surface_temp', 0):.2f} °C")
+                st.metric("Temperatura poda", f"{results.get('floor_surface_temp', 0):.1f} °C")
                 st.metric("Duljina cijevi", f"{results.get('pipe_length', 0):.2f} m")
             
             # Treća kolona - podešene vrijednosti i kontrole podešavanja
@@ -531,20 +530,19 @@ class FloorHeatingUI:
                 adjusted_results = loop.get("adjusted_results", {}) if has_adjusted_results else {}
                 
                 st.markdown("<div class='section-header'>Podešene vrijednosti</div>", unsafe_allow_html=True)
-                
-                # Prikaži podešene vrijednosti ako postoje (promijenjen redoslijed da prati isti redoslijed kao original)
+                  # Prikaži podešene vrijednosti ako postoje (promijenjen redoslijed da prati isti redoslijed kao original)
                 if has_adjusted_results:
-                    st.metric("Toplinski tok", f"{adjusted_results.get('heat_flux', 0):.2f} W/m²")
-                    st.metric("Snaga", f"{adjusted_results.get('heat_load', 0):.2f} W")
+                    st.metric("Toplinski tok", f"{adjusted_results.get('heat_flux', 0):.1f} W/m²")
+                    st.metric("Snaga", f"{adjusted_results.get('heat_load', 0):.0f} W")
                     st.metric("Protok", f"{adjusted_results.get('flow_rate_l_min', 0):.2f} l/min")
                     st.metric("Pad tlaka", f"{adjusted_results.get('pressure_drop', 0):.2f} kPa")
                     
                     # Koristimo već izračunatu povratnu temperaturu iz flow_adjuster-a
                     # Ona je već pravilno izračunata iterativnim postupkom i spremljena u rezultatima
                     adjusted_return_temp = adjusted_results.get('return_temperature', flow_temp - delta_t)
-                    st.metric("Povratna temperatura", f"{adjusted_return_temp:.2f} °C")
+                    st.metric("Povratna temperatura", f"{adjusted_return_temp:.1f} °C")
                     
-                    st.metric("Temperatura poda", f"{adjusted_results.get('floor_surface_temp', 0):.2f} °C")
+                    st.metric("Temperatura poda", f"{adjusted_results.get('floor_surface_temp', 0):.1f} °C")
                     
                     # Informacija o postotku podešavanja - ispravljeno formatiranje
                     adjustment_pct = adjusted_results.get("adjustment_percentage", 0)
