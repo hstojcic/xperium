@@ -6,7 +6,16 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Provjera jesmo li na Streamlit Cloudu
-is_streamlit_cloud = "STREAMLIT_SHARING" in os.environ or "IS_STREAMLIT_CLOUD" in os.environ
+is_streamlit_cloud = "STREAMLIT_SHARING" in os.environ or "IS_STREAMLIT_CLOUD" in os.environ or os.environ.get("HOSTNAME", "").startswith("stcloud")
+
+# Postavimo varijable okruženja za ostatak aplikacije
+os.environ["IS_STREAMLIT_CLOUD"] = "1" if is_streamlit_cloud else "0"
+
+# Ispis informacija o okruženju za lakše otklanjanje grešaka
+if is_streamlit_cloud:
+    print("Aplikacija se pokreće na Streamlit Cloudu")
+else:
+    print("Aplikacija se pokreće lokalno")
 
 from core.navigation import Navigation
 from core.state_manager import StateManager

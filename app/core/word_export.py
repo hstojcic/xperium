@@ -2,18 +2,31 @@ import streamlit as st
 import os
 import sys
 
-# Postavka za provjeru jesmo li na Streamlit Cloudu
-is_streamlit_cloud = "STREAMLIT_SHARING" in os.environ or "IS_STREAMLIT_CLOUD" in os.environ
+# Provjera jesmo li u streamlit cloud okruženju
+is_streamlit_cloud = (
+    os.environ.get("IS_STREAMLIT_CLOUD", "0") == "1" or
+    "STREAMLIT_SHARING" in os.environ or
+    os.environ.get("HOSTNAME", "").startswith("stcloud")
+)
+
+# Debugiranje
+print(f"Word_export.py: is_streamlit_cloud = {is_streamlit_cloud}")
 
 # Global varijabla za Document
 Document = None
 
 # Pokušaj importiranja docx biblioteke
-try:
-    from docx import Document
-except ImportError:
-    # Ako biblioteka nije dostupna, Document ostaje None
-    pass
+if not is_streamlit_cloud:
+    try:
+        print("Pokušaj importa python-docx...")
+        from docx import Document
+        print("Uspješno importan python-docx")
+    except ImportError as e:
+        # Ako biblioteka nije dostupna, Document ostaje None
+        print(f"Neuspješno importan python-docx: {str(e)}")
+        pass
+else:
+    print("Streamlit Cloud detektiran - preskačem import python-docx")
 
 class WordExport:
     """
