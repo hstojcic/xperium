@@ -12,12 +12,11 @@ from .elementi.fizicki_zid import FizickiZid # Added import
 class Prostorija:
     """Klasa koja predstavlja jednu prostoriju u proračunu."""
     def __init__(self, id=None, naziv="Nova prostorija", tip="Dnevni boravak", 
-                 etaza_id=None, povrsina=20.0, model_ref=None, broj_prostorije=None):
+                 etaza_id=None, povrsina=20.0, model_ref=None, broj_prostorije=None):        
         self.id = id if id is not None else uuid.uuid4().hex
         self.naziv = naziv
         self.tip = tip
         self.etaza_id = etaza_id
-        self.stambena_jedinica_id = None  # Nova veza na stambenu jedinicu
         self.povrsina = float(povrsina)
         self.broj_prostorije = broj_prostorije  # Broj prostorije na etaži
         self.oznaka = ""  # Oznaka prostorije (za interno korištenje)
@@ -441,16 +440,14 @@ class Prostorija:
                                 zid_dict["povezana_prostorija_id"] = povezana_prostorija_id
                             break  # Found the corresponding FizickiZid
             
-            zidovi_dict_list.append(zid_dict)
-
-        return {
+            zidovi_dict_list.append(zid_dict)        
+            return {
             "id": self.id,
             "naziv": self.naziv,
             "broj_prostorije": self.broj_prostorije, # Broj prostorije na etaži
             "oznaka": getattr(self, 'oznaka', ''), # Add oznaka, ensure it exists or default
             "tip": self.tip, # Add type
             "etaza_id": self.etaza_id,
-            "stambena_jedinica_id": self.stambena_jedinica_id,  # Dodano
             "temp_unutarnja": self.temp_unutarnja,
             "povrsina": self.povrsina,
             "visina": self.visina,
@@ -482,10 +479,9 @@ class Prostorija:
         instance.oznaka = data.get("oznaka", "")  # Dodaj oznaka polje
         instance.grijana = data.get("grijana", TIPOVI_PROSTORIJA.get(instance.tip, {}).get("grijana", True))
         instance.temp_unutarnja = data.get("temp_unutarnja", TIPOVI_PROSTORIJA.get(instance.tip, {}).get("temp", 20))
-        instance.izracunata_temp_negrijane = data.get("izracunata_temp_negrijane")
+        instance.izracunata_temp_negrijane = data.get("izracunata_temp_negrijane")        
         instance.izmjene_zraka = data.get("izmjene_zraka", TIPOVI_PROSTORIJA.get(instance.tip, {}).get("izmjene", 0.5))
         instance.temperatura_susjednog_negrijanog = data.get("temperatura_susjednog_negrijanog", 10.0)
-        instance.stambena_jedinica_id = data.get("stambena_jedinica_id")  # Dodano
         
         # Učitaj ostale atribute
         instance.pod_tip = data.get("pod_tip", "Prema tlu")

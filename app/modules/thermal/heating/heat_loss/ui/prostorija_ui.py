@@ -114,31 +114,8 @@ def forma_za_dodavanje_prostorije(model, etaza, callback_nakon_dodavanja=None):
                         visina = None
                 
                 with col2:
-                    # Stambena jedinica sekcija
-                    st.markdown("**Stambena jedinica**")
-                    # Dohvati stambene jedinice za trenutnu etažu
-                    stambene_jedinice = model.dohvati_stambene_jedinice_za_etazu(etaza.id)
-                    
-                    if stambene_jedinice:
-                        opcije_stambenih_jedinica = {
-                            "": "Bez stambene jedinice"
-                        }
-                        opcije_stambenih_jedinica.update({
-                            s.id: f"{s.naziv} ({s.tip})" for s in stambene_jedinice
-                        })
-                        
-                        odabrana_stambena_jedinica = st.selectbox(
-                            "Dodjeli stambenu jedinicu",
-                            options=list(opcije_stambenih_jedinica.keys()),
-                            format_func=lambda x: opcije_stambenih_jedinica[x],
-                            help="Odaberite stambenu jedinicu kojoj pripada ova prostorija"
-                        )
-                    else:
-                        st.info("Nema definiranih stambenih jedinica na ovoj etaži.")
-                        odabrana_stambena_jedinica = ""
-                
-                # Opcija za negrijanu prostoriju
-                grijana = st.checkbox("Negrijana prostorija", value=(not default_grijana), key="negrijana_nova_prostorija")  # Obrnuta logika - kvačicom označavamo negrijane
+                    # Opcija za negrijanu prostoriju
+                    grijana = st.checkbox("Negrijana prostorija", value=(not default_grijana), key="negrijana_nova_prostorija")  # Obrnuta logika - kvačicom označavamo negrijane
                 
                 # Parametri za temperaturu i izmjene zraka
                 if grijana:  # Ako je označeno kao negrijana
@@ -197,20 +174,11 @@ def forma_za_dodavanje_prostorije(model, etaza, callback_nakon_dodavanja=None):
                         nova_prostorija.koristi_zadanu_visinu = koristi_zadanu_visinu
                         if not koristi_zadanu_visinu and visina:
                             nova_prostorija.visina = visina
-                        
-                        # Postavljamo dodatne atribute
+                          # Postavljamo dodatne atribute
                         nova_prostorija.oznaka = oznaka  # Dodaj oznaku prostorije
                         nova_prostorija.temp_unutarnja = temp_unutarnja
                         nova_prostorija.izmjene_zraka = izmjene_zraka
                         nova_prostorija.grijana = not grijana  # Negacija jer u UI označavamo negrijanu, a atribut je "grijana"
-                        
-                        # Postavi stambenu jedinicu ako je odabrana
-                        if odabrana_stambena_jedinica:
-                            nova_prostorija.stambena_jedinica_id = odabrana_stambena_jedinica
-                            # Dodaj prostoriju u stambenu jedinicu
-                            stambena_jedinica = model.dohvati_stambenu_jedinicu(odabrana_stambena_jedinica)
-                            if stambena_jedinica:
-                                stambena_jedinica.dodaj_prostoriju(nova_prostorija.id)
                         
                         # Spremanje promjena u model
                         model._spremi_u_session_state()
@@ -261,47 +229,19 @@ def forma_za_uredivanje_prostorije(prostorija, model, callback_nakon_uredivanja=
             tip = st.selectbox("Tip prostorije", tipovi_prostorija, index=tip_index)
             povrsina = st.number_input("Površina [m²]", min_value=1.0, value=prostorija.povrsina, step=1.0)
             
-            col1, col2 = st.columns(2)
-            with col1:
-                koristi_zadanu_visinu = st.checkbox("Koristi visinu etaže", value=prostorija.koristi_zadanu_visinu, key=f"koristi_visinu_etaze_edit_{prostorija.id}")
-            
-            with col2:
-                # Stambena jedinica sekcija
-                st.markdown("**Stambena jedinica**")
-                # Dohvati stambene jedinice za trenutnu etažu
-                stambene_jedinice = model.dohvati_stambene_jedinice_za_etazu(etaza.id)
-                
-                if stambene_jedinice:
-                    opcije_stambenih_jedinica = {
-                        "": "Bez stambene jedinice"
-                    }
-                    opcije_stambenih_jedinica.update({
-                        s.id: f"{s.naziv} ({s.tip})" for s in stambene_jedinice
-                    })
-                    
-                    trenutna_stambena_jedinica = getattr(prostorija, 'stambena_jedinica_id', "") or ""
-                    default_index = 0
-                    if trenutna_stambena_jedinica in opcije_stambenih_jedinica:
-                        default_index = list(opcije_stambenih_jedinica.keys()).index(trenutna_stambena_jedinica)
-                    
-                    odabrana_stambena_jedinica = st.selectbox(
-                        "Stambena jedinica",
-                        options=list(opcije_stambenih_jedinica.keys()),
-                        format_func=lambda x: opcije_stambenih_jedinica[x],
-                        index=default_index,
-                        key=f"stambena_jedinica_edit_{prostorija.id}",
-                        help="Promjeni stambenu jedinicu kojoj pripada ova prostorija"
-                    )
-                else:
-                    st.info("Nema definiranih stambenih jedinica na ovoj etaži.")
-                    odabrana_stambena_jedinica = ""
-            
-            visina_input_widget_val = None # Varijabla za vrijednost iz number_input za visinu
-            if not koristi_zadanu_visinu:
-                visina_value = prostorija.visina if prostorija.visina is not None else etaza.visina_etaze if etaza else 2.5
-                # 'visina' varijabla će držati vrijednost iz ovog inputa
-                visina_input_widget_val = st.number_input("Visina prostorije [m]", min_value=2.0, max_value=6.0, value=visina_value, step=0.1, key=f"visina_prostorije_edit_{prostorija.id}")
-            # Ako koristi_zadanu_visinu ostane True, visina_input_widget_val ostaje None
+        col1, col2 = st.columns(2)
+        with col1:
+            koristi_zadanu_visinu = st.checkbox("Koristi visinu etaže", value=prostorija.koristi_zadanu_visinu, key=f"koristi_visinu_etaze_edit_{prostorija.id}")
+        
+        with col2:
+            pass  # Prazan stupac
+        
+        visina_input_widget_val = None # Varijabla za vrijednost iz number_input za visinu
+        if not koristi_zadanu_visinu:
+            visina_value = prostorija.visina if prostorija.visina is not None else etaza.visina_etaze if etaza else 2.5
+            # 'visina' varijabla će držati vrijednost iz ovog inputa
+            visina_input_widget_val = st.number_input("Visina prostorije [m]", min_value=2.0, max_value=6.0, value=visina_value, step=0.1, key=f"visina_prostorije_edit_{prostorija.id}")
+        # Ako koristi_zadanu_visinu ostane True, visina_input_widget_val ostaje None
             
             # Dodana opcija za negrijanu prostoriju
             init_grijana = getattr(prostorija, 'grijana', True)
@@ -383,28 +323,9 @@ def forma_za_uredivanje_prostorije(prostorija, model, callback_nakon_uredivanja=
                     # defaultnom vrijednošću za negrijane prostore (koju je možda postavio azuriraj_tip_prostorije).
                     # Osiguravamo da se ne prepiše vrijednošću iz skrivenog inputa za grijane prostorije.
                     pass # Namjerno ne diramo prostorija.temp_unutarnja; oslanjamo se na logiku modela ili tipa prostorije.
-                
-                # Izmjene zraka se uvijek postavljaju iz odgovarajućeg vidljivog input polja
+                  # Izmjene zraka se uvijek postavljaju iz odgovarajućeg vidljivog input polja
                 if izmjene_zraka_input_val is not None:
                     prostorija.izmjene_zraka = validate_number(izmjene_zraka_input_val, min_value=0.0, max_value=5.0, default=0.5)
-                
-                # Upravljanje stambenom jedinicom
-                trenutna_stambena_jedinica_id = getattr(prostorija, 'stambena_jedinica_id', None)
-                
-                if trenutna_stambena_jedinica_id != odabrana_stambena_jedinica:
-                    # Ukloni iz trenutne stambene jedinice
-                    if trenutna_stambena_jedinica_id:
-                        trenutna_stambena_jedinica = model.dohvati_stambenu_jedinicu(trenutna_stambena_jedinica_id)
-                        if trenutna_stambena_jedinica:
-                            trenutna_stambena_jedinica.ukloni_prostoriju(prostorija.id)
-                      # Dodaj u novu stambenu jedinicu
-                    if odabrana_stambena_jedinica:
-                        nova_stambena_jedinica = model.dohvati_stambenu_jedinicu(odabrana_stambena_jedinica)
-                        if nova_stambena_jedinica:
-                            nova_stambena_jedinica.dodaj_prostoriju(prostorija.id)
-                            prostorija.stambena_jedinica_id = odabrana_stambena_jedinica
-                    else:
-                        prostorija.stambena_jedinica_id = None
                 
                 # Spremanje promjena u model
                 model._spremi_u_session_state()
@@ -473,30 +394,12 @@ def prikaz_detalja_prostorije(prostorija, model):
                 st.metric("Izračunata temperatura", f"{izracunata_temp:.1f} °C")
             else:
                 st.metric("Temperatura", "Čeka izračun", delta="?")
-    with col3:
-        st.metric("Izmjene zraka", f"{prostorija.izmjene_zraka:.1f} h⁻¹")
+    with col3:        st.metric("Izmjene zraka", f"{prostorija.izmjene_zraka:.1f} h⁻¹")
     with col4:
         visina = prostorija.get_actual_height(etaza)
         st.metric("Visina", f"{visina:.2f} m")
     
-    # Third row: Residential unit assignment
-    stambena_jedinica_id = getattr(prostorija, 'stambena_jedinica_id', None)
-    if stambena_jedinica_id:
-        stambena_jedinica = model.dohvati_stambenu_jedinicu(stambena_jedinica_id)
-        if stambena_jedinica:
-            col1, col2, col3, col4 = st.columns(4)
-            with col1:
-                st.metric("Stambena jedinica", stambena_jedinica.naziv)
-            with col2:
-                st.metric("Tip jedinice", stambena_jedinica.tip)
-            with col3:
-                st.metric("Ukupna površina jedinice", f"{stambena_jedinica.ukupna_povrsina:.1f} m²")
-            with col4:
-                broj_prostorija = len(stambena_jedinica.prostorije_ids)
-                st.metric("Broj prostorija u jedinici", broj_prostorija)
-    else:
-        st.info("Prostorija nije dodijeljena nijednoj stambenoj jedinici.")
-        # Ako je prostorija negrijana, dodajemo još informaciju o izračunu temperature
+    # Ako je prostorija negrijana, dodajemo još informaciju o izračunu temperature
     if not grijana:
         izracunata_temp = getattr(prostorija, 'izracunata_temp_negrijane', None)
         if izracunata_temp is not None:
@@ -564,20 +467,8 @@ def prikazi_manager_prostorija(model, etaza_id, prostorija_controller, zid_contr
             with col1:
                 room_title = f"{prostorija.get_formatted_broj_prostorije()}. {prostorija.naziv}" if prostorija.broj_prostorije else prostorija.naziv
                 st.markdown(f"<div class='room-title'>{room_title}</div>", unsafe_allow_html=True)
-                
-                # Basic room info
+                  # Basic room info
                 room_info = f"Tip: **{prostorija.tip}** | Površina: **{prostorija.povrsina:.1f} m²**"
-                
-                # Add residential unit info if assigned
-                stambena_jedinica_id = getattr(prostorija, 'stambena_jedinica_id', None)
-                if stambena_jedinica_id:
-                    stambena_jedinica = model.dohvati_stambenu_jedinicu(stambena_jedinica_id)
-                    if stambena_jedinica:
-                        room_info += f" | SJ: **{stambena_jedinica.naziv}**"
-                    else:
-                        room_info += " | SJ: **Nepoznata**"
-                else:
-                    room_info += " | SJ: **Nedodijeljena**"
                 
                 st.markdown(room_info)
             
@@ -729,70 +620,4 @@ def prikazi_pod_i_strop_prostorije(prostorija, model):
         st.markdown(f"**Tip stropa:** {prostorija.strop.get('tip', 'Nije definirano')}")
         st.markdown(f"**U-vrijednost stropa:** {prostorija.strop.get('u_vrijednost', 0.0):.3f} W/m²K")
 
-def prikazi_prostorije_po_stambenim_jedinicama(model, etaza_id):
-    """
-    Prikazuje prostorije grupirane po stambenim jedinicama.
-    
-    Parameters:
-    -----------
-    model : MultiRoomModel
-        Model s prostorijama
-    etaza_id : str
-        ID etaže za koju se prikazuju prostorije
-    """
-    etaza = model.dohvati_etazu(etaza_id)
-    if not etaza:
-        st.error("Etaža nije pronađena.")
-        return
 
-    prostorije = model.dohvati_prostorije_za_etazu(etaza_id)
-    if not prostorije:
-        st.info(f"Nema definiranih prostorija na etaži {etaza.naziv}.")
-        return
-
-    # Grupiraj prostorije po stambenim jedinicama
-    prostorije_po_jedinicama = {}
-    prostorije_bez_jedinice = []
-    
-    for prostorija in prostorije:
-        stambena_jedinica_id = getattr(prostorija, 'stambena_jedinica_id', None)
-        if stambena_jedinica_id:
-            if stambena_jedinica_id not in prostorije_po_jedinicama:
-                prostorije_po_jedinicama[stambena_jedinica_id] = []
-            prostorije_po_jedinicama[stambena_jedinica_id].append(prostorija)
-        else:
-            prostorije_bez_jedinice.append(prostorija)
-    
-    st.subheader(f"Prostorije na etaži: {etaza.naziv} (po stambenim jedinicama)")
-    
-    # Prikaži prostorije grupirane po stambenim jedinicama
-    for stambena_jedinica_id, prostorije_u_jedinici in prostorije_po_jedinicama.items():
-        stambena_jedinica = model.dohvati_stambenu_jedinicu(stambena_jedinica_id)
-        if stambena_jedinica:
-            with st.expander(f"🏠 {stambena_jedinica.naziv} ({stambena_jedinica.tip}) - {len(prostorije_u_jedinici)} prostorija/e", expanded=True):
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.metric("Ukupna površina", f"{stambena_jedinica.ukupna_povrsina:.1f} m²")
-                with col2:
-                    broj_grijanih = sum(1 for p in prostorije_u_jedinici if getattr(p, 'grijana', True))
-                    st.metric("Grijane prostorije", f"{broj_grijanih}/{len(prostorije_u_jedinici)}")
-                with col3:
-                    ukupna_povrsina_prostorija = sum(p.povrsina for p in prostorije_u_jedinici)
-                    st.metric("Površina prostorija", f"{ukupna_povrsina_prostorija:.1f} m²")
-                
-                # Prikaži prostorije u ovoj stambenoj jedinici
-                for prostorija in sorted(prostorije_u_jedinici, key=lambda p: (p.broj_prostorije or 0, p.naziv)):
-                    room_title = f"{prostorija.get_formatted_broj_prostorije()}. {prostorija.naziv}" if prostorija.broj_prostorije else prostorija.naziv
-                    grijana = getattr(prostorija, 'grijana', True)
-                    status_icon = "🔥" if grijana else "❄️"
-                    st.markdown(f"• {status_icon} **{room_title}** ({prostorija.tip}) - {prostorija.povrsina:.1f} m²")
-    
-    # Prikaži prostorije koje nisu dodijeljene nijednoj stambenoj jedinici
-    if prostorije_bez_jedinice:
-        with st.expander(f"📦 Nedodijeljene prostorije - {len(prostorije_bez_jedinice)} prostorija/e", expanded=True):
-            st.warning("Ove prostorije nisu dodijeljene nijednoj stambenoj jedinici:")
-            for prostorija in sorted(prostorije_bez_jedinice, key=lambda p: (p.broj_prostorije or 0, p.naziv)):
-                room_title = f"{prostorija.get_formatted_broj_prostorije()}. {prostorija.naziv}" if prostorija.broj_prostorije else prostorija.naziv
-                grijana = getattr(prostorija, 'grijana', True)
-                status_icon = "🔥" if grijana else "❄️"
-                st.markdown(f"• {status_icon} **{room_title}** ({prostorija.tip}) - {prostorija.povrsina:.1f} m²")

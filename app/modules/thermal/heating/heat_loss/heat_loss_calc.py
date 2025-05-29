@@ -10,7 +10,7 @@ from modules.base import BaseCalculation
 from .models.elementi.constants import TIPOVI_PROSTORIJA, TEMP_FAKTORI, DEFAULT_U_VALUES as ORIGINAL_U_VALUES
 from .constants import GRADOVI_TEMP, REGIJE_GRADOVI_TEMP, ORIJENTACIJE, CSS_STYLES
 from .calculations.heat_loss_calculation import izracunaj_toplinske_gubitke_zgrade, izracunaj_toplinske_gubitke_etaze, izracunaj_toplinske_gubitke_prostorije
-from .calculations.transmisijski import izracun_transmisijskih_gubitaka # Added import
+from .calculations.transmisijski import izracun_transmisijskih_gubitaka
 from .models.model import MultiRoomModel
 from .utils.session_manager import is_valid_session_data, initialize_session_data
 from .utils.validators import prikazuje_upozorenje_o_povrsinama
@@ -27,7 +27,6 @@ from .controllers.etaza_controller import EtazaController
 from .controllers.prostorija_controller import ProstorijaController
 from .controllers.zid_controller import ZidController
 from .controllers.elementi_controller import ElementiController
-from .controllers.stambena_jedinica_controller import StambenaJedinicaController
 
 # Elementi zgrade
 from .models.elementi.wall_elements import WallElements
@@ -46,13 +45,17 @@ class HeatLossCalc(BaseCalculation):
         super().__init__("Proračun toplinskih gubitaka")
         # Definicija ključa za session state za ovaj kalkulator
         self.session_key = "heat_loss_calculator_model"  # Jedinstveni ključ
-        self.results_session_key = f"{self.session_key}_rezultati"        # Inicijalizacija parametara proračuna
+        self.results_session_key = f"{self.session_key}_rezultati"
+        
+        # Inicijalizacija parametara proračuna
         self.temp_vanjska = -16.1  # Za Osijek
         self.u_values = ORIGINAL_U_VALUES.copy()
-          # Initialize thermal bridges parameters with clean defaults
+        
+        # Initialize thermal bridges parameters with clean defaults
         self.toplinski_mostovi = False
         self.postotak_toplinskih_mostova = 0
-          # Initialize faktor_sigurnosti
+        
+        # Initialize faktor_sigurnosti
         if 'faktor_sigurnosti_slider' not in st.session_state:
             st.session_state.faktor_sigurnosti_slider = 0
         self.faktor_sigurnosti = st.session_state.faktor_sigurnosti_slider
@@ -66,7 +69,6 @@ class HeatLossCalc(BaseCalculation):
         self.etaza_controller = None
         self.prostorija_controller = None
         self.zid_controller = None
-        self.stambena_jedinica_controller = None
         
         # Javni API za kompatibilnost s originalnom implementacijom
         self.izracunaj_toplinske_gubitke_prostorije = izracunaj_toplinske_gubitke_prostorije
@@ -85,10 +87,9 @@ class HeatLossCalc(BaseCalculation):
                 Model građevinskih elemenata
             """
             self.etaza_controller = EtazaController(model)
-            self.prostorija_controller = ProstorijaController(model)
+            self.prostorija_controller = ProstorijaController(model)            
             self.zid_controller = ZidController(model)
             self.elementi_controller = ElementiController(elements_model)
-            self.stambena_jedinica_controller = StambenaJedinicaController(model)
         
     def render(self):
         """
@@ -126,8 +127,8 @@ class HeatLossCalc(BaseCalculation):
             self.rezultati = st.session_state[self.results_session_key]
         else:
             self.rezultati = {}        # Definiramo tabove
-        tab_names = ["Opće postavke", "Postavke zgrade", "Stambene jedinice", "Rezultati po prostorijama", "Rezultati po etažama"]
-        tab1, tab2, tab3, tab4, tab5 = st.tabs(tab_names)
+        tab_names = ["Opće postavke", "Postavke zgrade", "Rezultati po prostorijama", "Rezultati po etažama"]
+        tab1, tab2, tab3, tab4 = st.tabs(tab_names)
 
         with tab1:  # Opće postavke
             self._prikazi_opce_postavke(elements_model)
@@ -143,35 +144,12 @@ class HeatLossCalc(BaseCalculation):
                 # Osiguravamo da se prikaže uputa korisniku ako nije odabrana etaža za upravljanje
                 if 'selected_etaza_for_rooms' not in st.session_state:
                     st.info("Da biste upravljali prostorijama na etaži, kliknite na 'Upravljaj prostorijama' pokraj željene etaže.")
-                
-                # Display the floor and room management UI
-                prikazi_manager_etaza(self.multi_room_model, self.etaza_controller, self.prostorija_controller, self.zid_controller, self.stambena_jedinica_controller)
+                  # Display the floor and room management UI
+                prikazi_manager_etaza(self.multi_room_model, self.etaza_controller, self.prostorija_controller, self.zid_controller)
             else:
                 st.error("Model zgrade ili potrebni kontroleri nisu pravilno inicijalizirani.")
         
-        with tab3:  # Stambene jedinice
-            st.header("Upravljanje stambenim jedinicama")
-            
-            if self.multi_room_model and self.stambena_jedinica_controller:
-                # Make sure we have the latest model data
-                self.multi_room_model._ucitaj_iz_session_state()
-                
-                try:
-                    # Import the residential units management UI
-                    from .ui.stambena_jedinica_ui import prikazi_manager_stambenih_jedinica
-                    
-                    # Display the residential units management UI
-                    prikazi_manager_stambenih_jedinica(self.multi_room_model, self.stambena_jedinica_controller)
-                except ImportError:
-                    st.error("Modul za upravljanje stambenim jedinicama nije dostupan.")
-                except Exception as e:
-                    st.error(f"Greška prilikom prikazivanja sučelja za stambene jedinice: {str(e)}")
-                    import traceback
-                    traceback.print_exc()
-            else:
-                st.error("Model zgrade ili kontroler za stambene jedinice nije pravilno inicijaliziran.")
-                
-        with tab4:  # Rezultati po prostorijama
+        with tab3:  # Rezultati po prostorijama
             # Automatski pokreni izračun ako već nije pokrenut
             self._pokreni_izracun(elements_model)
                 
@@ -188,13 +166,13 @@ class HeatLossCalc(BaseCalculation):
                     st.info("Nema dostupnih rezultata za prostorije ili format nije ispravan.")
             else:
                 st.info("Nema dostupnih rezultata za prostorije. Provjerite postavke zgrade i pokušajte ponovno.")
-                
-        with tab5:  # Rezultati po etažama
+        
+        with tab4:  # Rezultati po etažama
             st.header("Rezultati proračuna - Po etažama")
             # Automatski pokreni izračun kada se otvori tab s rezultatima
             self._pokreni_izracun(elements_model)
             
-            if self.rezultati and self.rezultati.get("zgrada"):            # Import the format_power function for use in this scope
+            if self.rezultati and self.rezultati.get("zgrada"):# Import the format_power function for use in this scope
                 from .ui.results_ui import format_power
             if self.rezultati and self.rezultati.get("zgrada"):
                 # Prvo prikazujemo rezultate za cijelu zgradu

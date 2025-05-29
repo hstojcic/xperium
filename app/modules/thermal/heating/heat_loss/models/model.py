@@ -6,7 +6,7 @@ import streamlit as st
 import uuid
 from .etaza import Etaza
 from .prostorija import Prostorija
-from .stambena_jedinica import StambenaJedinica  # Dodano
+
 from .elementi.wall_elements import WallElements
 from .elementi.fizicki_zid import FizickiZid
 
@@ -17,11 +17,11 @@ class MultiRoomModel:
     Ova verzija koristi centralizirani sustav upravljanja fizičkim zidovima, što omogućuje
     da više prostorija dijeli isti fizički zid, eliminirajući probleme nedosljednosti.
     """
+    
     def __init__(self, session_key):
         self.session_key = session_key
         self.etaze = []
         self.prostorije = []
-        self.stambene_jedinice = []  # Dodana lista stambenih jedinica
         self.fizicki_zidovi = {}  # Rječnik fizičkih zidova {id: FizickiZid}
         self._fizicki_elementi = {}  # Rječnik s fizičkim elementima za proračun
         self._ucitaj_iz_session_state()
@@ -34,9 +34,14 @@ class MultiRoomModel:
         if isinstance(current_data_in_state, MultiRoomModel):
             try:
                 # Pokušaj konverzije instance u rječnik
-                st.session_state[self.session_key] = current_data_in_state.to_dict()
+                converted_dict = {
+                    "etaze": [e.to_dict() for e in current_data_in_state.etaze],
+                    "prostorije": [p.to_dict() for p in current_data_in_state.prostorije],
+                    "fizicki_zidovi": {zid_id: zid.to_dict() for zid_id, zid in current_data_in_state.fizicki_zidovi.items()}
+                }
+                st.session_state[self.session_key] = converted_dict
                 current_data_in_state = st.session_state[self.session_key]  # Sada bi trebao biti rječnik
-            except AttributeError:
+            except (AttributeError, TypeError):
                 # Ako konverzija ne uspije, obriši neispravno stanje
                 del st.session_state[self.session_key]
                 current_data_in_state = None
@@ -70,22 +75,7 @@ class MultiRoomModel:
                 except Exception:
                     # Možete dodati st.warning za neuspjelo učitavanje etaže, za debugiranje
                     # npr. st.warning(f"Greška pri učitavanju etaže: {e}")
-                    pass  # Preskoči etažu koja se ne može učitati
-            self.etaze = loaded_etaze_temp
-              # Load stambene jedinice - IMPORTANT: load this BEFORE prostorije since prostorije reference stambene jedinice
-            stambene_jedinice_data = saved_state.get("stambene_jedinice", [])
-            loaded_stambene_jedinice_temp = []
-            for s_data in stambene_jedinice_data:
-                try:
-                    stambena_jedinica_obj = StambenaJedinica.from_dict(s_data)
-                    if isinstance(stambena_jedinica_obj, StambenaJedinica):
-                        loaded_stambene_jedinice_temp.append(stambena_jedinica_obj)
-                except Exception:
-                    # st.warning(f"Greška pri učitavanju stambene jedinice: {e}")
-                    pass  # Preskoči stambenu jedinicu koja se ne može učitati
-            
-            # Assign loaded stambene jedinice to the model
-            self.stambene_jedinice = loaded_stambene_jedinice_temp
+                    pass  # Preskoči etažu koja se ne može učitati            self.etaze = loaded_etaze_temp
             
             # Load prostorije
             prostorije_data = saved_state.get("prostorije", [])
@@ -98,251 +88,29 @@ class MultiRoomModel:
                 except Exception:
                     # st.warning(f"Greška pri učitavanju prostorije: {e}")
                     pass  # Preskoči prostoriju koja se ne može učitati
-            
-            # Assign loaded prostorije to the model
+              # Assign loaded prostorije to the model
             self.prostorije = loaded_prostorije_temp
         else:
             self._inicijaliziraj_zadano_stanje()
-        
+            
         if not self.etaze:
             self.dodaj_etazu(naziv="Prizemlje", redni_broj=1, visina_etaze=2.5, spremi=False)
         
         self.restore_shared_elements_references()
         self._spremi_u_session_state()
-
+    
     def _inicijaliziraj_zadano_stanje(self):
         """Inicijalizira model s praznim listama etaža i prostorija."""
         self.etaze = []
         self.prostorije = []
-        self.stambene_jedinice = []  # Dodano
-
-    # === METODE ZA UPRAVLJANJE STAMBENIM JEDINICAMA ===
     
-    def dodaj_stambenu_jedinicu(self, etaza_id, naziv="Nova stambena jedinica", tip="Stan", opis="", spremi=True):
-        """
-        Dodaje novu stambenu jedinicu u model.
-        
-        Parameters:
-        -----------
-        etaza_id : str
-            ID etaže u koju se dodaje stambena jedinica
-        naziv : str
-            Naziv nove stambene jedinice
-        tip : str
-            Tip stambene jedinice (iz TIPOVI_STAMBENIH_JEDINICA)
-        opis : str
-            Opis stambene jedinice
-        spremi : bool
-            Određuje hoće li se promjene spremiti u session state
-              Returns:
-        --------
-        StambenaJedinica or None
-            Nova stambena jedinica ili None ako etaža ne postoji        """
-        etaza = self.dohvati_etazu(etaza_id)
-        if not etaza:
-            return None
-        
-        stambena_jedinica = StambenaJedinica(naziv=naziv, tip=tip, opis=opis, etaza_id=etaza_id)
-        self.stambene_jedinice.append(stambena_jedinica)
-          # Dodaj stambenu jedinicu i u etažu
-        etaza.dodaj_stambenu_jedinicu(stambena_jedinica.id)
-        
-        if spremi:
-            self._spremi_u_session_state()
-        
-        return stambena_jedinica
-
-    def ukloni_stambenu_jedinicu(self, stambena_jedinica_id, spremi=True):
-        """
-        Uklanja stambenu jedinicu iz modela.
-        
-        Parameters:
-        -----------
-        stambena_jedinica_id : str
-            ID stambene jedinice koja se uklanja
-        spremi : bool
-            Određuje hoće li se promjene spremiti u session state
-        """
-        stambena_jedinica = self.dohvati_stambenu_jedinicu(stambena_jedinica_id)
-        if not stambena_jedinica:
-            return
-        
-        # Ukloni iz etaže
-        etaza = self.dohvati_etazu(stambena_jedinica.etaza_id)
-        if etaza:
-            etaza.ukloni_stambenu_jedinicu(stambena_jedinica_id)
-        
-        # Ukloni prostorije koje pripadaju ovoj stambenoj jedinici
-        prostorije_za_uklanjanje = [p for p in self.prostorije if p.stambena_jedinica_id == stambena_jedinica_id]
-        for prostorija in prostorije_za_uklanjanje:
-            self.ukloni_prostoriju(prostorija.id, spremi=False)
-        
-        # Ukloni stambenu jedinicu iz modela
-        self.stambene_jedinice = [s for s in self.stambene_jedinice if s.id != stambena_jedinica_id]
-        
-        if spremi:
-            self._spremi_u_session_state()
-
-    def dohvati_stambenu_jedinicu(self, stambena_jedinica_id):
-        """
-        Dohvaća stambenu jedinicu po ID-u.
-        
-        Parameters:
-        -----------
-        stambena_jedinica_id : str
-            ID stambene jedinice koja se dohvaća
-            
-        Returns:
-        --------
-        StambenaJedinica or None
-            Stambena jedinica s navedenim ID-om ili None ako ne postoji
-        """
-        for s in self.stambene_jedinice:
-            if s.id == stambena_jedinica_id:
-                return s
-        return None
-
-    def dohvati_stambene_jedinice_za_etazu(self, etaza_id):
-        """
-        Dohvaća sve stambene jedinice koje pripadaju određenoj etaži.
-
-        Parameters:
-        -----------
-        etaza_id : str
-            ID etaže za koju se dohvaćaju stambene jedinice.
-
-        Returns:
-        --------
-        list[StambenaJedinica]
-            Lista stambenih jedinica koje pripadaju navedenoj etaži.        """
-        rezultat = [s for s in self.stambene_jedinice if s.etaza_id == etaza_id]
-        return rezultat
-
-    def dohvati_prostorije_za_stambenu_jedinicu(self, stambena_jedinica_id):
-        """
-        Dohvaća sve prostorije koje pripadaju određenoj stambenoj jedinici.
-
-        Parameters:
-        -----------
-        stambena_jedinica_id : str
-            ID stambene jedinice za koju se dohvaćaju prostorije.
-
-        Returns:
-        --------
-        list[Prostorija]
-            Lista prostorija koje pripadaju navedenoj stambenoj jedinici.
-        """
-        return [p for p in self.prostorije if p.stambena_jedinica_id == stambena_jedinica_id]
-
-    def dodaj_prostoriju_u_stambenu_jedinicu(self, stambena_jedinica_id, naziv="Nova prostorija", tip="Dnevni boravak", povrsina=20.0, spremi=True):
-        """
-        Dodaje novu prostoriju u stambenu jedinicu.
-        
-        Parameters:
-        -----------
-        stambena_jedinica_id : str
-            ID stambene jedinice u koju se dodaje prostorija
-        naziv : str
-            Naziv nove prostorije
-        tip : str
-            Tip prostorije
-        povrsina : float
-            Površina prostorije u m²
-        spremi : bool
-            Određuje hoće li se promjene spremiti u session state
-            
-        Returns:
-        --------
-        Prostorija or None
-            Nova prostorija ili None ako stambena jedinica ne postoji
-        """
-        stambena_jedinica = self.dohvati_stambenu_jedinicu(stambena_jedinica_id)
-        if not stambena_jedinica:
-            return None
-        
-        # Dodaj prostoriju u model
-        prostorija = self.dodaj_prostoriju(
-            etaza_id=stambena_jedinica.etaza_id,
-            naziv=naziv,
-            tip=tip,
-            povrsina=povrsina,
-            spremi=False
-        )
-        
-        if prostorija:
-            # Postavi stambenu jedinicu u prostoriju
-            prostorija.stambena_jedinica_id = stambena_jedinica_id
-            
-            # Dodaj prostoriju u stambenu jedinicu
-            stambena_jedinica.dodaj_prostoriju(prostorija)
-            
-            if spremi:
-                self._spremi_u_session_state()
-        
-        return prostorija
-
-    def ukloni_prostoriju_iz_stambene_jedinice(self, prostorija_id, spremi=True):
-        """
-        Uklanja prostoriju iz stambene jedinice (ali ne briše prostoriju).
-        
-        Parameters:
-        -----------
-        prostorija_id : str
-            ID prostorije koja se uklanja iz stambene jedinice
-        spremi : bool
-            Određuje hoće li se promjene spremiti u session state
-        """
-        prostorija = self.dohvati_prostoriju(prostorija_id)
-        if not prostorija or not prostorija.stambena_jedinica_id:
-            return
-        
-        stambena_jedinica = self.dohvati_stambenu_jedinicu(prostorija.stambena_jedinica_id)
-        if stambena_jedinica:
-            stambena_jedinica.ukloni_prostoriju(prostorija_id)
-        
-        prostorija.stambena_jedinica_id = None
-        
-        if spremi:
-            self._spremi_u_session_state()
-
-    def premjesti_prostoriju_u_stambenu_jedinicu(self, prostorija_id, nova_stambena_jedinica_id, spremi=True):
-        """
-        Premješta prostoriju iz jedne stambene jedinice u drugu.
-        
-        Parameters:
-        -----------
-        prostorija_id : str
-            ID prostorije koja se premješta
-        nova_stambena_jedinica_id : str
-            ID nove stambene jedinice
-        spremi : bool
-            Određuje hoće li se promjene spremiti u session state
-        """
-        prostorija = self.dohvati_prostoriju(prostorija_id)
-        nova_stambena_jedinica = self.dohvati_stambenu_jedinicu(nova_stambena_jedinica_id)
-        
-        if not prostorija or not nova_stambena_jedinica:
-            return
-        
-        # Ukloni iz stare stambene jedinice
-        if prostorija.stambena_jedinica_id:
-            self.ukloni_prostoriju_iz_stambene_jedinice(prostorija_id, spremi=False)
-        
-        # Dodaj u novu stambenu jedinicu
-        prostorija.stambena_jedinica_id = nova_stambena_jedinica_id
-        nova_stambena_jedinica.dodaj_prostoriju(prostorija)
-        
-        if spremi:
-            self._spremi_u_session_state()
-
-    # === KRAJ METODA ZA STAMBENE JEDINICE ===
-        
+    # === METODE ZA UPRAVLJANJE ETAŽAMA ===
+    
     def _spremi_u_session_state(self):
         """Sprema model u Streamlit session state."""
         stanje = {
             "etaze": [e.to_dict() for e in self.etaze],
             "prostorije": [p.to_dict() for p in self.prostorije],
-            "stambene_jedinice": [s.to_dict() for s in self.stambene_jedinice],
             "fizicki_zidovi": {zid_id: zid.to_dict() for zid_id, zid in self.fizicki_zidovi.items()}
         }
         st.session_state[self.session_key] = stanje
@@ -527,13 +295,7 @@ class MultiRoomModel:
         """
         prostorija_za_uklanjanje = self.dohvati_prostoriju(prostorija_id)
         if not prostorija_za_uklanjanje:
-            return
-
-        # Ukloni prostoriju iz stambene jedinice ako joj pripada
-        if prostorija_za_uklanjanje.stambena_jedinica_id:
-            self.ukloni_prostoriju_iz_stambene_jedinice(prostorija_id, spremi=False)
-
-        # Ukloni prostoriju iz modela
+            return        # Ukloni prostoriju iz modela
         self.prostorije = [p for p in self.prostorije if p.id != prostorija_id]
         
         if spremi:
@@ -623,12 +385,8 @@ class MultiRoomModel:
             naziv=novi_naziv,
             tip=originalna.tip,
             povrsina=originalna.povrsina,
-            etaza_id=originalna.etaza_id,
-            model_ref=self
+            etaza_id=originalna.etaza_id,            model_ref=self
         )
-        
-        # Set stambena_jedinica_id after creation
-        nova_prostorija.stambena_jedinica_id = originalna.stambena_jedinica_id
         
         # Kopiraj zidove
         nova_prostorija.zidovi = [zid.copy() for zid in originalna.zidovi]
@@ -727,20 +485,19 @@ class MultiRoomModel:
                         }
                         self._fizicki_elementi[zid.id] = fizicki_element
                     except Exception as e:
-                        st.write(f"Warning: Could not create physical element for wall {zid.id}: {e}")
-
-    def to_dict(self):
-        """
-        Konvertira MultiRoomModel instancu u rječnik.
+                            st.write(f"Warning: Could not create physical element for wall {zid.id}: {e}")
         
-        Returns:
-        --------
-        dict
-            Rječnik koji predstavlja model s etažama, prostorijama, stambenim jedinicama i fizičkim zidovima
-        """
-        return {
-            "etaze": [e.to_dict() for e in self.etaze],
-            "prostorije": [p.to_dict() for p in self.prostorije],
-            "stambene_jedinice": [s.to_dict() for s in self.stambene_jedinice],
-            "fizicki_zidovi": {zid_id: zid.to_dict() for zid_id, zid in self.fizicki_zidovi.items()}
-        }
+        def to_dict(self):
+            """
+            Konvertira MultiRoomModel instancu u rječnik.
+            
+            Returns:
+            --------
+            dict
+                Rječnik koji predstavlja model s etažama, prostorijama i fizičkim zidovima
+            """
+            return {
+                "etaze": [e.to_dict() for e in self.etaze],
+                "prostorije": [p.to_dict() for p in self.prostorije],
+                "fizicki_zidovi": {zid_id: zid.to_dict() for zid_id, zid in self.fizicki_zidovi.items()}
+            }

@@ -130,7 +130,7 @@ def forma_za_uredivanje_etaze(etaza, model, callback_nakon_uredivanja=None):
 
 # Additional functions for the refactored heat_loss module
 
-def prikazi_manager_etaza(model, controller, prostorija_controller, zid_controller, stambena_jedinica_controller=None): # Add stambena_jedinica_controller
+def prikazi_manager_etaza(model, controller, prostorija_controller, zid_controller):
     """
     Prikazuje sučelje za upravljanje etažama (dodavanje, uređivanje, brisanje).
     
@@ -144,25 +144,12 @@ def prikazi_manager_etaza(model, controller, prostorija_controller, zid_controll
         Kontroler za upravljanje prostorijama
     zid_controller : ZidController
         Kontroler za upravljanje zidovima
-    stambena_jedinica_controller : StambenaJedinicaController, optional
-        Kontroler za upravljanje stambenim jedinicama
     """
     st.header("Upravljanje etažama")
     
     # Dodavanje nove etaže
     with st.expander("Dodaj novu etažu", expanded=False):
-        nova_etaza = forma_za_dodavanje_etaze(model)
-      # Dodajemo upravljanje stambenim jedinicama ako je kontroler proslijeđen
-    if stambena_jedinica_controller:
-        st.markdown("### Upravljanje stambenim jedinicama")
-        # Adding a container with border for visual separation
-        with st.container(border=True):
-            # Import stambena jedinica UI
-            try:
-                from .stambena_jedinica_ui import prikazi_manager_stambenih_jedinica
-                prikazi_manager_stambenih_jedinica(model, stambena_jedinica_controller)
-            except ImportError:
-                st.warning("Modul za upravljanje stambenim jedinicama nije dostupan.")
+        forma_za_dodavanje_etaze(model)
       # Prikaz postojećih etaža
     if not model.etaze:
         st.info("Nema definiranih etaža. Dodajte novu etažu.")
@@ -191,21 +178,6 @@ def prikazi_manager_etaza(model, controller, prostorija_controller, zid_controll
             with col1:
                 st.markdown(f"### Etaža {etaza.redni_broj}: {etaza.naziv}")
                 st.markdown(f"Visina etaže: **{etaza.visina_etaze:.2f} m**")
-                
-                # Prikaz informacije o stambenim jedinicama kroz model                # Debug: Check for housing units
-                stambene_jedinice = model.dohvati_stambene_jedinice_za_etazu(etaza.id)
-                
-                # Debug information - temporarily visible
-                st.caption(f"DEBUG: Etaza ID: {etaza.id}")
-                st.caption(f"DEBUG: Broj stambenih jedinica pronađen: {len(stambene_jedinice) if stambene_jedinice else 0}")
-                if stambene_jedinice:
-                    st.caption(f"DEBUG: Nazivi: {[sj.naziv for sj in stambene_jedinice]}")
-                
-                if stambene_jedinice:
-                    broj_stambenih_jedinica = len(stambene_jedinice)
-                    st.markdown(f"Stambene jedinice: **{broj_stambenih_jedinica}**")
-                else:
-                    st.markdown("Stambene jedinice: **Nema definiranih**")
             
             with col2:
                 if st.button("Uredi", key=f"edit_etaza_{etaza.id}", 
@@ -249,23 +221,7 @@ def prikazi_manager_etaza(model, controller, prostorija_controller, zid_controll
                         if 'selected_room_for_walls' in st.session_state:
                             del st.session_state['selected_room_for_walls']
                     st.rerun()
-                
-                # Add a button for managing stambene jedinice within this floor
-                if stambena_jedinica_controller:
-                    is_managing_units = st.session_state.get('selected_etaza_for_units') == etaza.id
-                    units_button_label = "Zatvori stambene" if is_managing_units else "Upravljaj stambenim jedinicama"
-                    
-                    if st.button(units_button_label, key=f"manage_units_etaza_{etaza.id}"):
-                        if is_managing_units:
-                            # Close residential units management
-                            if 'selected_etaza_for_units' in st.session_state:
-                                del st.session_state['selected_etaza_for_units']
-                        else:
-                            # Explicitly refresh model data before opening units management
-                            model._ucitaj_iz_session_state()
-                            # Open units management
-                            st.session_state['selected_etaza_for_units'] = etaza.id
-                        st.rerun()
+                  # Add a button for managing stambene jedinice within this floor
                 
                 # Dodatna informacija za korisnika
                 if not is_managing_rooms:
@@ -293,23 +249,7 @@ def prikazi_manager_etaza(model, controller, prostorija_controller, zid_controll
                     # Call the function that displays room management UI
                     prikazi_manager_prostorija(model, etaza.id, prostorija_controller, zid_controller)
                     
-                    st.markdown("---")
-            
-            # Display residential units manager if this etaza is selected for units management
-            if stambena_jedinica_controller and st.session_state.get('selected_etaza_for_units') == etaza.id:
-                with st.container():
-                    st.markdown("---")
-                    st.markdown("### Upravljanje stambenim jedinicama na etaži: " + etaza.naziv)
-                    
-                    # Import the residential units management UI
-                    try:
-                        from .stambena_jedinica_ui import prikazi_manager_stambenih_jedinica_za_etazu
-                        prikazi_manager_stambenih_jedinica_za_etazu(model, etaza.id, stambena_jedinica_controller)
-                    except ImportError:
-                        st.error("Modul za upravljanje stambenim jedinicama nije dostupan.")
-                    
-                    st.markdown("---")
-
+                    st.markdown("---")            
             # Separator između etaža
             if i < len(model.etaze) - 1:
                 st.markdown("---")
