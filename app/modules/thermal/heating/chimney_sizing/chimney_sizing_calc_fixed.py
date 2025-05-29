@@ -204,10 +204,10 @@ class ChimneySizingCalc(BaseCalculation):
                 "outdoor_length": 1,
                 "cold_area_length": 0,
                 "warm_area_length": 3.52
-            },            "results": {
+            },
+            "results": {
                 "pressure_conditions": {},
-                "working_pressures": {},
-                "backflow": {},
+                "working_pressures": {},            "backflow": {},
                 "temperature_conditions": {}
             }
         }

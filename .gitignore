@@ -1,0 +1,41 @@
+# Python cache datoteke
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Python compiled bytecode
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env/
+
+# IDE datoteke
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS datoteke
+.DS_Store
+Thumbs.db
+
+# Temporary datoteke
+*.tmp
+*.temp
+~*
+
+# Log datoteke
+*.log
+
+# Build datoteke
+build/
+dist/
+*.egg-info/
+
+# Streamlit cache
+.streamlit/

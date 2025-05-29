@@ -53,9 +53,7 @@ class StambenaJedinicaController:
         # Validiraj tip stambene jedinice
         if tip not in TIPOVI_STAMBENIH_JEDINICA:
             st.error(f"Neispravni tip stambene jedinice: {tip}")
-            return None
-        
-        # Create and save the new stambena jedinica
+            return None        # Create and save the new stambena jedinica
         stambena_jedinica = self.model.dodaj_stambenu_jedinicu(etaza_id, naziv, tip, opis)
         
         # Ensure the model is properly saved to session state

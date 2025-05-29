@@ -44,7 +44,7 @@ class MultiRoomModel:
             # Ako je u session state nešto što nije ni rječnik, ni None, ni MultiRoomModel instanca
             del st.session_state[self.session_key]
             current_data_in_state = None
-
+        
         if current_data_in_state:  # Ovdje bi current_data_in_state trebao biti rječnik ili None
             saved_state = current_data_in_state
             
@@ -53,9 +53,8 @@ class MultiRoomModel:
             for zid_id, zid_data in fizicki_zidovi_data.items():
                 try:
                     fizicki_zid_obj = FizickiZid.from_dict(zid_data)
-                    if isinstance(fizicki_zid_obj, FizickiZid):
-                        self.fizicki_zidovi[zid_id] = fizicki_zid_obj
-                except Exception as e:
+                    self.fizicki_zidovi[zid_id] = fizicki_zid_obj
+                except Exception:
                     # st.warning(f"Greška pri učitavanju fizičkog zida: {e}")
                     pass  # Preskoči zid koji se ne može učitati
             
@@ -68,14 +67,12 @@ class MultiRoomModel:
                     etaza_obj = Etaza.from_dict(e_data)
                     if isinstance(etaza_obj, Etaza):  # Provjeravamo je li objekt instanca klase Etaza
                         loaded_etaze_temp.append(etaza_obj)
-                    # Možete dodati st.warning ako etaza_obj nije Etaza, za debugiranje
-                except Exception as e:
+                except Exception:
                     # Možete dodati st.warning za neuspjelo učitavanje etaže, za debugiranje
                     # npr. st.warning(f"Greška pri učitavanju etaže: {e}")
                     pass  # Preskoči etažu koja se ne može učitati
             self.etaze = loaded_etaze_temp
-            
-            # Load stambene jedinice - IMPORTANT: load this BEFORE prostorije since prostorije reference stambene jedinice
+              # Load stambene jedinice - IMPORTANT: load this BEFORE prostorije since prostorije reference stambene jedinice
             stambene_jedinice_data = saved_state.get("stambene_jedinice", [])
             loaded_stambene_jedinice_temp = []
             for s_data in stambene_jedinice_data:
@@ -83,7 +80,7 @@ class MultiRoomModel:
                     stambena_jedinica_obj = StambenaJedinica.from_dict(s_data)
                     if isinstance(stambena_jedinica_obj, StambenaJedinica):
                         loaded_stambene_jedinice_temp.append(stambena_jedinica_obj)
-                except Exception as e:
+                except Exception:
                     # st.warning(f"Greška pri učitavanju stambene jedinice: {e}")
                     pass  # Preskoči stambenu jedinicu koja se ne može učitati
             
@@ -98,7 +95,7 @@ class MultiRoomModel:
                     prostorija_obj = Prostorija.from_dict(p_data, self)
                     if isinstance(prostorija_obj, Prostorija): # Provjeravamo je li objekt instanca klase Prostorija
                         loaded_prostorije_temp.append(prostorija_obj)
-                except Exception as e:
+                except Exception:
                     # st.warning(f"Greška pri učitavanju prostorije: {e}")
                     pass  # Preskoči prostoriju koja se ne može učitati
             
@@ -137,24 +134,22 @@ class MultiRoomModel:
             Opis stambene jedinice
         spremi : bool
             Određuje hoće li se promjene spremiti u session state
-            
-        Returns:
+              Returns:
         --------
         StambenaJedinica or None
-            Nova stambena jedinica ili None ako etaža ne postoji
-        """
+            Nova stambena jedinica ili None ako etaža ne postoji        """
         etaza = self.dohvati_etazu(etaza_id)
         if not etaza:
             return None
         
         stambena_jedinica = StambenaJedinica(naziv=naziv, tip=tip, opis=opis, etaza_id=etaza_id)
         self.stambene_jedinice.append(stambena_jedinica)
-        
-        # Dodaj stambenu jedinicu i u etažu
-        etaza.dodaj_stambenu_jedinicu(stambena_jedinica)
+          # Dodaj stambenu jedinicu i u etažu
+        etaza.dodaj_stambenu_jedinicu(stambena_jedinica.id)
         
         if spremi:
             self._spremi_u_session_state()
+        
         return stambena_jedinica
 
     def ukloni_stambenu_jedinicu(self, stambena_jedinica_id, spremi=True):
@@ -219,9 +214,9 @@ class MultiRoomModel:
         Returns:
         --------
         list[StambenaJedinica]
-            Lista stambenih jedinica koje pripadaju navedenoj etaži.
-        """
-        return [s for s in self.stambene_jedinice if s.etaza_id == etaza_id]
+            Lista stambenih jedinica koje pripadaju navedenoj etaži.        """
+        rezultat = [s for s in self.stambene_jedinice if s.etaza_id == etaza_id]
+        return rezultat
 
     def dohvati_prostorije_za_stambenu_jedinicu(self, stambena_jedinica_id):
         """
@@ -333,7 +328,8 @@ class MultiRoomModel:
         if prostorija.stambena_jedinica_id:
             self.ukloni_prostoriju_iz_stambene_jedinice(prostorija_id, spremi=False)
         
-        # Dodaj u novu stambenu jedinicu        prostorija.stambena_jedinica_id = nova_stambena_jedinica_id
+        # Dodaj u novu stambenu jedinicu
+        prostorija.stambena_jedinica_id = nova_stambena_jedinica_id
         nova_stambena_jedinica.dodaj_prostoriju(prostorija)
         
         if spremi:
@@ -378,11 +374,13 @@ class MultiRoomModel:
                                 if not isinstance(zid.get("elementi"), WallElements):
                                     zid["elementi"] = WallElements()
                                 if not isinstance(povezani_zid.get("elementi"), WallElements):
-                                    povezani_zid["elementi"] = WallElements()                                    # Set both walls to use the same elements object
-                                    povezani_zid["elementi"] = zid["elementi"]
-                                    break
-                    elif not isinstance(zid.get("elementi"), WallElements):
-                        zid["elementi"] = WallElements()
+                                    povezani_zid["elementi"] = WallElements()
+                                
+                                # Set both walls to use the same elements object
+                                povezani_zid["elementi"] = zid["elementi"]
+                                break
+                elif not isinstance(zid.get("elementi"), WallElements):
+                    zid["elementi"] = WallElements()
     
     def dodaj_etazu(self, naziv="Nova etaža", redni_broj=None, visina_etaze=2.5, broj_etaze=None, spremi=True):
         """
@@ -461,24 +459,22 @@ class MultiRoomModel:
                 return e
         return None
 
-    def dohvati_etazu_po_nazivu(self, naziv_etaze):
+    def dohvati_prostorije_za_etazu(self, etaza_id):
         """
-        Dohvaća etažu po nazivu.
-        
+        Dohvaća sve prostorije koje pripadaju određenoj etaži.
+
         Parameters:
         -----------
-        naziv_etaze : str
-            Naziv etaže koja se dohvaća
-              Returns:
+        etaza_id : str
+            ID etaže za koju se dohvaćaju prostorije.
+
+        Returns:
         --------
-        Etaza or None
-            Etaža s navedenim nazivom ili None ako ne postoji
+        list[Prostorija]
+            Lista prostorija koje pripadaju navedenoj etaži.
         """
-        for e in self.etaze:
-            if e.naziv == naziv_etaze:
-                return e
-        return None
-    
+        return [p for p in self.prostorije if p.etaza_id == etaza_id]
+
     def dodaj_prostoriju(self, etaza_id, naziv="Nova prostorija", tip="Dnevni boravak", povrsina=20.0, spremi=True):
         """
         Dodaje novu prostoriju u model.
@@ -490,7 +486,7 @@ class MultiRoomModel:
         naziv : str
             Naziv nove prostorije
         tip : str
-            Tip prostorije (npr. "Dnevni boravak", "Kupaonica", itd.)
+            Tip prostorije
         povrsina : float
             Površina prostorije u m²
         spremi : bool
@@ -498,27 +494,22 @@ class MultiRoomModel:
             
         Returns:
         --------
-        Prostorija or None
-            Nova prostorija koja je dodana u model ili None ako etaža ne postoji
+        Prostorija
+            Nova prostorija koja je dodana u model
         """
         etaza = self.dohvati_etazu(etaza_id)
         if not etaza:
-            return None
+            return None        
+        prostorija = Prostorija(
+            naziv=naziv,
+            tip=tip,
+            povrsina=povrsina,
+            etaza_id=etaza_id,
+            model_ref=self
+        )
         
-        # Automatska numeracija prostorija po etaži
-        prostorije_na_etazi = [p for p in self.prostorije if p.etaza_id == etaza_id]
-        if prostorije_na_etazi:
-            # Pronađi najveći broj prostorije na etaži
-            brojevi = [p.broj_prostorije for p in prostorije_na_etazi if p.broj_prostorije is not None]
-            novi_broj = max(brojevi) + 1 if brojevi else 1
-        else:
-            novi_broj = 1
-        
-        prostorija = Prostorija(naziv=naziv, tip=tip, etaza_id=etaza_id, povrsina=povrsina, 
-                               model_ref=self, broj_prostorije=novi_broj)
-        if prostorija.visina is None and not prostorija.koristi_zadanu_visinu:
-            prostorija.visina = etaza.visina_etaze
         self.prostorije.append(prostorija)
+        
         if spremi:
             self._spremi_u_session_state()
         return prostorija
@@ -537,7 +528,14 @@ class MultiRoomModel:
         prostorija_za_uklanjanje = self.dohvati_prostoriju(prostorija_id)
         if not prostorija_za_uklanjanje:
             return
+
+        # Ukloni prostoriju iz stambene jedinice ako joj pripada
+        if prostorija_za_uklanjanje.stambena_jedinica_id:
+            self.ukloni_prostoriju_iz_stambene_jedinice(prostorija_id, spremi=False)
+
+        # Ukloni prostoriju iz modela
         self.prostorije = [p for p in self.prostorije if p.id != prostorija_id]
+        
         if spremi:
             self._spremi_u_session_state()
 
@@ -560,299 +558,177 @@ class MultiRoomModel:
                 return p
         return None
 
-    def dohvati_prostorije_za_etazu(self, etaza_id):
+    def uredi_prostoriju(self, prostorija_id, naziv=None, tip=None, povrsina=None, spremi=True):
         """
-        Dohvaća sve prostorije koje pripadaju određenoj etaži.
-
-        Parameters:
-        -----------
-        etaza_id : str
-            ID etaže za koju se dohvaćaju prostorije.
-
-        Returns:
-        --------
-        list[Prostorija]
-            Lista prostorija koje pripadaju navedenoj etaži.
-        """
-        return [p for p in self.prostorije if p.etaza_id == etaza_id]
-        
-    def create_physical_wall_from_wall(self, wall_dict):
-        """
-        Stvara novi fizički zid na temelju rječnika zida iz prostorije.
-        
-        Parameters:
-        -----------
-        wall_dict : dict
-            Rječnik s podacima o zidu
-            
-        Returns:
-        --------
-        FizickiZid
-            Novostvoreni fizički zid
-        """
-        # Izvlačimo elemente zida
-        elementi = wall_dict.get("elementi")
-        if not isinstance(elementi, WallElements):
-            elementi = WallElements()
-            
-        # Izvlačimo segmente zida
-        segmenti = wall_dict.get("segmenti", [])
-            
-        # Stvaramo novi fizički zid
-        fizicki_zid = FizickiZid(
-            tip=wall_dict.get("tip", "vanjski"),
-            orijentacija=wall_dict.get("orijentacija"),
-            duzina=float(wall_dict.get("duzina", 5.0)),
-            visina=float(wall_dict.get("visina")) if wall_dict.get("visina") is not None else None,
-            je_segmentiran=wall_dict.get("je_segmentiran", False),
-            segmenti=segmenti,
-            elementi=elementi
-        )
-            
-        return fizicki_zid
-
-    def analiziraj_povezanost_zidova(self):
-        """
-        Analizira prostorije i identificira potencijalno povezane zidove.
-        
-        Returns:
-        --------
-        list
-            Lista potencijalnih povezivanja zidova
-        """
-        # Importiramo funkciju iz modula zid_povezivanje
-        from .zid_povezivanje import analiziraj_povezanost_zidova
-        return analiziraj_povezanost_zidova(self)
-        
-    def povezi_zidove(self, prostorija1_id, zid1_id, prostorija2_id, zid2_id):
-        """
-        Povezuje dva zida u različitim prostorijama kao isti fizički zid.
-        
-        Parameters:
-        -----------
-        prostorija1_id, prostorija2_id : str
-            ID prostorija čiji se zidovi povezuju
-        zid1_id, zid2_id : str
-            ID zidova koji se povezuju
-            
-        Returns:
-        --------
-        bool
-            True ako je povezivanje uspjelo, False inače
-        """
-        # Importiramo funkciju iz modula zid_povezivanje
-        from .zid_povezivanje import povezi_zidove
-        return povezi_zidove(self, prostorija1_id, zid1_id, prostorija2_id, zid2_id)
-        
-    def add_wall_to_room(self, prostorija_id, tip_zida, duzina, visina_zida=None, 
-                      orijentacija=None, povezana_ciljna_prostorija_id=None,
-                      je_segmentiran=False, tip_zida_id=None, postojeci_fizicki_zid_id=None):
-        """
-        Dodaje zid u prostoriju i stvara ili povezuje s fizičkim zidom.
+        Uređuje postojeću prostoriju.
         
         Parameters:
         -----------
         prostorija_id : str
-            ID prostorije u koju se dodaje zid
-        tip_zida : str
-            Tip zida ("vanjski", "prema_prostoriji", itd.)
-        duzina : float
-            Duljina zida u metrima
-        visina_zida : float
-            Visina zida u metrima (ako je None, koristi se visina etaže)
-        orijentacija : str
-            Orijentacija zida (relevantno samo za vanjski zid)
-        povezana_ciljna_prostorija_id : str
-            ID povezane prostorije (za zidove tipa "prema_prostoriji")
-        je_segmentiran : bool
-            Označava je li zid segmentiran
-        tip_zida_id : str
-            ID tipa zida (za određivanje karakteristika zida)
-        postojeci_fizicki_zid_id : str
-            ID postojećeg fizičkog zida ako se dodaje referenca na postojeći fizički zid
+            ID prostorije koja se uređuje
+        naziv : str, optional
+            Novi naziv prostorije
+        tip : str, optional
+            Novi tip prostorije
+        povrsina : float, optional
+            Nova površina prostorije
+        spremi : bool
+            Određuje hoće li se promjene spremiti u session state
             
         Returns:
         --------
-        str or None
-            ID novog zida ili None ako prostorija nije pronađena
+        Prostorija or None
+            Uređena prostorija ili None ako prostorija ne postoji
         """
-        # Dohvaćamo prostoriju
         prostorija = self.dohvati_prostoriju(prostorija_id)
         if not prostorija:
             return None
-            
-        # Dohvaćamo povezanu prostoriju ako postoji
-        povezana_prostorija_obj = None
-        if povezana_ciljna_prostorija_id and tip_zida == "prema_prostoriji":
-            povezana_prostorija_obj = self.dohvati_prostoriju(povezana_ciljna_prostorija_id)
         
-        # Stvaramo ili koristimo postojeći fizički zid
-        if postojeci_fizicki_zid_id and postojeci_fizicki_zid_id in self.fizicki_zidovi:
-            # Koristimo postojeći fizički zid
-            fizicki_zid = self.fizicki_zidovi[postojeci_fizicki_zid_id]
-        else:
-            # Stvaramo novi fizički zid
-            fizicki_zid = FizickiZid(
-                tip=tip_zida,
-                orijentacija=orijentacija if tip_zida == "vanjski" else None,
-                duzina=float(duzina),
-                visina=float(visina_zida) if visina_zida is not None else None,
-                je_segmentiran=je_segmentiran
-            )
-            self.fizicki_zidovi[fizicki_zid.id] = fizicki_zid
-          # Dodajemo zid u prostoriju koristeći metodu dodaj_zid
-        novi_zid = prostorija.dodaj_zid(
-            tip=tip_zida,
-            orijentacija=orijentacija,
-            duzina=duzina,
-            visina_zida=visina_zida,
-            povezana_prostorija_obj=povezana_prostorija_obj,
-            model_ref=self,
-            je_segmentiran_val=je_segmentiran,
-            elementi_obj=fizicki_zid.elementi,
-            fizicki_zid_ref=fizicki_zid,
-            tip_zida_id=tip_zida_id
-        )
+        if naziv is not None:
+            prostorija.naziv = naziv
+        if tip is not None:
+            prostorija.tip = tip
+        if povrsina is not None:
+            prostorija.povrsina = povrsina
         
-        if novi_zid:
-            # Dodajemo referencu na prostoriju u fizički zid
-            fizicki_zid.dodaj_povezanu_prostoriju(prostorija.id, novi_zid["id"])
-            
-            # Ako imamo povezanu prostoriju, ažuriramo tip zida
-            if povezana_prostorija_obj:
-                povezani_zid_id = novi_zid.get("povezani_zid_id")
-                if povezani_zid_id:
-                    fizicki_zid.dodaj_povezanu_prostoriju(povezana_prostorija_obj.id, povezani_zid_id)
-                    fizicki_zid.osvjezi_tip_na_temelju_povezanosti()
-        
-        # Spremamo promjene u session state
-        self._spremi_u_session_state()
-        
-        # Vraćamo ID novog zida
-        return novi_zid["id"] if novi_zid else None
-        
-    def obrisi_zid_iz_prostorije(self, prostorija_id, zid_id):
+        if spremi:
+            self._spremi_u_session_state()
+        return prostorija
+
+    def dupliciraj_prostoriju(self, prostorija_id, novi_naziv=None, spremi=True):
         """
-        Briše zid iz prostorije i ažurira fizički zid.
+        Duplicira postojeću prostoriju.
         
         Parameters:
         -----------
         prostorija_id : str
-            ID prostorije iz koje se briše zid
-        zid_id : str
-            ID zida koji se briše
+            ID prostorije koja se duplicira
+        novi_naziv : str, optional
+            Naziv nove prostorije (ako nije naveden, koristi se "Kopija od {originalni_naziv}")
+        spremi : bool
+            Određuje hoće li se promjene spremiti u session state
             
         Returns:
         --------
-        bool
-            True ako je zid uspješno obrisan, False inače
+        Prostorija or None
+            Nova prostorija ili None ako originalna ne postoji
         """
-        prostorija = self.dohvati_prostoriju(prostorija_id)
-        if not prostorija:
-            return False
+        originalna = self.dohvati_prostoriju(prostorija_id)
+        if not originalna:
+            return None
         
-        # Dohvaćamo zid prije brisanja da bismo mogli ažurirati fizički zid
-        zid_prije_brisanja = prostorija.dohvati_zid(zid_id)
-        if not zid_prije_brisanja:
-            return False
-            
-        # Dohvaćamo fizički zid ako postoji
-        fizicki_zid_id = zid_prije_brisanja.get("fizicki_zid_id")
-        if fizicki_zid_id and fizicki_zid_id in self.fizicki_zidovi:
-            # Uklanjamo poveznicu s prostorijom
-            fizicki_zid = self.fizicki_zidovi[fizicki_zid_id]
-            fizicki_zid.ukloni_povezanu_prostoriju(prostorija_id)
-            
-            # Provjeravamo je li fizički zid i dalje povezan s nekim prostorijama
-            if not fizicki_zid.povezane_prostorije:
-                # Ako nema više povezanih prostorija, uklanjamo fizički zid
-                del self.fizicki_zidovi[fizicki_zid_id]
-            else:
-                # Inače, ažuriramo tip zida
-                fizicki_zid.osvjezi_tip_na_temelju_povezanosti()
+        if novi_naziv is None:
+            novi_naziv = f"Kopija od {originalna.naziv}"        
+        nova_prostorija = Prostorija(
+            naziv=novi_naziv,
+            tip=originalna.tip,
+            povrsina=originalna.povrsina,
+            etaza_id=originalna.etaza_id,
+            model_ref=self
+        )
         
-        # Delegiramo brisanje zida metodi ukloni_zid u klasi Prostorija
-        result = prostorija.ukloni_zid(zid_id, model_ref=self)
-        # Spremamo promjene u session state
-        self._spremi_u_session_state()
-        return result
+        # Set stambena_jedinica_id after creation
+        nova_prostorija.stambena_jedinica_id = originalna.stambena_jedinica_id
         
-    @property
-    def fizicki_elementi(self):
+        # Kopiraj zidove
+        nova_prostorija.zidovi = [zid.copy() for zid in originalna.zidovi]
+        
+        self.prostorije.append(nova_prostorija)
+        
+        if spremi:
+            self._spremi_u_session_state()
+        return nova_prostorija
+
+    def izracunaj_ukupne_gubitke(self):
         """
-        Vraća rječnik fizičkih elemenata za proračun.
+        Izračunava ukupne gubitke topline za sve prostorije u modelu.
         
         Returns:
         --------
-        dict
-            Rječnik s fizičkim elementima {id: element}
+        float
+            Ukupni gubici topline u W
         """
-        return self._fizicki_elementi
-        
-    def create_physical_elements_from_rooms(self):
-        """
-        Stvara fizičke elemente iz prostorija za potrebe proračuna.
-        Ova metoda osigurava da se fizički zidovi pravilno mapiraju u fizičke elemente.
-        """
-        # Resetiramo postojeće fizičke elemente
-        self._fizicki_elementi = {}
-        
-        # Prvotno dodajemo sve fizičke zidove u mapu fizičkih elemenata
-        for zid_id, zid in self.fizicki_zidovi.items():
-            self._fizicki_elementi[zid_id] = zid
-            # Inicijaliziramo listu parova
-            if not hasattr(zid, 'originalni_zid_soba_parovi'):
-                zid.originalni_zid_soba_parovi = []
-        
-        # Za svaku prostoriju i svaki zid,
-        # pobrinemo se da su svi zidovi s fizicki_zid_id pravilno mapirani
+        ukupni_gubici = 0
         for prostorija in self.prostorije:
-            for zid in prostorija.zidovi:
-                fizicki_zid_id = zid.get("fizicki_zid_id")
-                if fizicki_zid_id and fizicki_zid_id in self.fizicki_zidovi:
-                    # Ako zid ima fizički zid ID i taj fizički zid postoji,
-                    # dodajemo dodatne informacije za proračun
-                    fizicki_zid = self.fizicki_zidovi[fizicki_zid_id]
-                    
-                    # Čuvamo par originalnog zida i prostorije
-                    par = {
-                        "originalni_zid_id": zid.get("id"),
-                        "prostorija_id": prostorija.id
-                    }
-                    
-                    # Provjera postoji li već ovaj par
-                    postoji = False
-                    for postojeci_par in fizicki_zid.originalni_zid_soba_parovi:
-                        if (postojeci_par["originalni_zid_id"] == par["originalni_zid_id"] and
-                            postojeci_par["prostorija_id"] == par["prostorija_id"]):
-                            postoji = True
-                            break
-                    
-                    # Dodajemo par u listu parova samo ako već ne postoji
-                    if not postoji:
-                        fizicki_zid.originalni_zid_soba_parovi.append(par)
-                    
-                    # Čuvamo i osnovne atribute za kompatibilnost s postojećim kodom
-                    fizicki_zid.originalni_zid_id = zid.get("id")
-                    fizicki_zid.prostorija_id = prostorija.id
-                    
-                    # Ako je zid prema prostoriji, dodajemo informaciju o povezanoj prostoriji
-                    if zid.get("tip") == "prema_prostoriji" and zid.get("povezana_prostorija_id"):
-                        fizicki_zid.povezana_prostorija_id = zid.get("povezana_prostorija_id")
-                        
-    @property
-    def katalog_elemenata(self):
+            if hasattr(prostorija, 'ukupni_gubici'):
+                ukupni_gubici += prostorija.ukupni_gubici
+        return ukupni_gubici
+
+    def izracunaj_ukupnu_povrsinu(self):
         """
-        Vraća katalog građevinskih elemenata potreban za proračun.
-        U trenutnoj implementaciji, ova metoda vraća None, jer se katalog 
-        dohvaća iz session_state u heat_loss_calc.py pod ključem 'elements_model'.
+        Izračunava ukupnu površinu svih prostorija u modelu.
         
         Returns:
-        --------        object or None
+        --------
+        float
+            Ukupna površina u m²
+        """
+        return sum(p.povrsina for p in self.prostorije)
+
+    def dohvati_katalog_elemenata(self):
+        """
+        Dohvaća katalog građevinskih elemenata.
+        
+        Returns:
+        --------        
+        object or None
             Katalog građevinskih elemenata ili None
         """
         return None
     
+    @property
+    def fizicki_elementi(self):
+        """
+        Property for accessing physical elements dictionary.
+        
+        Returns:
+        --------
+        dict
+            Dictionary of physical elements
+        """
+        return self._fizicki_elementi
+    
+    @property
+    def katalog_elemenata(self):
+        """
+        Property for accessing building elements catalog.
+        
+        Returns:
+        --------
+        object or None
+            Building elements catalog or None
+        """
+        return self.dohvati_katalog_elemenata()
+    
+    def create_physical_elements_from_rooms(self):
+        """
+        Creates physical elements from room definitions.
+        This method processes all rooms and creates corresponding physical wall elements.
+        """
+        # Clear existing physical elements
+        self._fizicki_elementi = {}
+        
+        # Process each room and create physical elements
+        for prostorija in self.prostorije:
+            for zid in prostorija.zidovi:
+                # Create physical wall element if it doesn't exist
+                if hasattr(zid, 'id') and zid.id not in self._fizicki_elementi:
+                    try:
+                        # Create a physical wall element
+                        fizicki_element = {
+                            'id': zid.id,
+                            'tip': getattr(zid, 'tip', 'vanjski'),
+                            'duzina': getattr(zid, 'duzina', 0.0),
+                            'visina': getattr(zid, 'visina', 2.5),
+                            'povrsina': getattr(zid, 'duzina', 0.0) * getattr(zid, 'visina', 2.5),
+                            'orijentacija': getattr(zid, 'orijentacija', None),
+                            'prostorija_id': prostorija.id,
+                            'prostorija_naziv': prostorija.naziv
+                        }
+                        self._fizicki_elementi[zid.id] = fizicki_element
+                    except Exception as e:
+                        st.write(f"Warning: Could not create physical element for wall {zid.id}: {e}")
+
     def to_dict(self):
         """
         Konvertira MultiRoomModel instancu u rječnik.

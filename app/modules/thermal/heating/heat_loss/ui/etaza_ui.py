@@ -192,9 +192,17 @@ def prikazi_manager_etaza(model, controller, prostorija_controller, zid_controll
                 st.markdown(f"### Etaža {etaza.redni_broj}: {etaza.naziv}")
                 st.markdown(f"Visina etaže: **{etaza.visina_etaze:.2f} m**")
                 
-                # Prikaz informacije o stambenim jedinicama ako postoje
-                if hasattr(etaza, 'stambene_jedinice') and etaza.stambene_jedinice:
-                    broj_stambenih_jedinica = len(etaza.stambene_jedinice)
+                # Prikaz informacije o stambenim jedinicama kroz model                # Debug: Check for housing units
+                stambene_jedinice = model.dohvati_stambene_jedinice_za_etazu(etaza.id)
+                
+                # Debug information - temporarily visible
+                st.caption(f"DEBUG: Etaza ID: {etaza.id}")
+                st.caption(f"DEBUG: Broj stambenih jedinica pronađen: {len(stambene_jedinice) if stambene_jedinice else 0}")
+                if stambene_jedinice:
+                    st.caption(f"DEBUG: Nazivi: {[sj.naziv for sj in stambene_jedinice]}")
+                
+                if stambene_jedinice:
+                    broj_stambenih_jedinica = len(stambene_jedinice)
                     st.markdown(f"Stambene jedinice: **{broj_stambenih_jedinica}**")
                 else:
                     st.markdown("Stambene jedinice: **Nema definiranih**")
